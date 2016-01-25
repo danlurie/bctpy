@@ -19,9 +19,10 @@
 #	You should have received a copy of the GNU General Public License
 #	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
+
 import numpy as np
-import bct
+from . import bct
+from functools import reduce
 
 def comodularity_und(a1,a2):
     '''
@@ -50,8 +51,8 @@ def comodularity_und(a1,a2):
 
     E,F,f,G,g,H,h=(0,)*7
 
-    for e1 in xrange(n):
-        for e2 in xrange(n):
+    for e1 in range(n):
+        for e2 in range(n):
             if e2>=e1: continue
 
             #node pairs
@@ -98,16 +99,16 @@ def comodularity_und(a1,a2):
     P=m1+m2-1
 
     #print f,F
-    print m1,m2
-    print 'f/F', f/F
-    print '(f/F)*p', f*P/F
-    print 'g/E', g/E
-    print '(g/E)*p', g*P/E
-    print 'h/E', h/E
-    print '(h/E)*p', h*P/E
-    print 'h/H', h/H
-    print '(h/H)*p', h*P/E
-    print 'q1, q2', qa, qb
+    print(m1,m2)
+    print('f/F', f/F)
+    print('(f/F)*p', f*P/F)
+    print('g/E', g/E)
+    print('(g/E)*p', g*P/E)
+    print('h/E', h/E)
+    print('(h/E)*p', h*P/E)
+    print('h/H', h/H)
+    print('(h/H)*p', h*P/E)
+    print('q1, q2', qa, qb)
     #print 'f/F*sqrt(qa*qb)', f*np.sqrt(qa*qb)/F
     return f/F
 
@@ -125,8 +126,8 @@ def comod_test(a1,a2):
 
     f,F=(0,)*2
 
-    for e1 in xrange(n):
-        for e2 in xrange(n):
+    for e1 in range(n):
+        for e2 in range(n):
             if e2>=e1: continue
 
             #node pairs
@@ -144,9 +145,9 @@ def comod_test(a1,a2):
     m2=np.max(mb)
     eta=[]
     gamma=[]
-    for i in xrange(m1):
+    for i in range(m1):
         eta.append(np.size(np.where(ma==i+1)))
-    for i in xrange(m2):
+    for i in range(m2):
         gamma.append(np.size(np.where(mb==i+1)))
 
     scale,conscale = (0,)*2
@@ -156,9 +157,9 @@ def comod_test(a1,a2):
             conscale += (h*g)/(n*(h+g)-h*g)
             scale+= (h*h*g*g)/(n**3*(h+g)-n*h*g)
 
-    print m1,m2
+    print(m1,m2)
 #	print conscale
-    print scale
+    print(scale)
     return (f/F)/scale
 
 def cross_modularity(a1,a2):
@@ -216,8 +217,8 @@ def sample_degenerate_partitions(w, probtune_cap=.10, modularity_cutoff=.95,
             p=p)
         if q > (seed_q * modularity_cutoff):
             if not quiet:
-                print ('found a degenerate partition after %i tries with probtune ' 
-                    'parameter %.3f: %.5f %.5f'%(ntries,p,q,seed_q))
+                print(('found a degenerate partition after %i tries with probtune ' 
+                    'parameter %.3f: %.5f %.5f'%(ntries,p,q,seed_q)))
             ntries=0
             yield ci,q
         else:
@@ -235,15 +236,15 @@ def cross_modularity_degenerate(a1,a2,n=20, quiet=False):
     b_degenerator = sample_degenerate_partitions(a2, quiet=quiet)
 
     accum=0
-    for i in xrange(n):
-        a_ci, qa = a_degenerator.next()
-        b_ci, qb = b_degenerator.next()
+    for i in range(n):
+        a_ci, qa = next(a_degenerator)
+        b_ci, qb = next(b_degenerator)
         _,qab = bct.modularity_und_sign(a1, b_ci)
         _,qba = bct.modularity_und_sign(a2, a_ci)
         res = (qab+qba)/(qa+qb)
         accum+=res
         #print 'trial %i, degenerate modularity %.3f'%(i,res)
-        print 'trial %i, metric so far %.3f'%(i,accum/(i+1))
+        print('trial %i, metric so far %.3f'%(i,accum/(i+1)))
 
     return accum/n
 
@@ -361,8 +362,8 @@ def cross_modularity_index(a1, canonical_ci, n=100, inmod_p=.25, outmod_p=.05,
         modularity_cutoff=modularity_cutoff)
 
     accum=0
-    for i in xrange(n):
-        a_ci, qa = a_degenerator.next()
+    for i in range(n):
+        a_ci, qa = next(a_degenerator)
 
         b = makerand_representative_module_und(canonical_ci, inmod_p=inmod_p,
            outmod_p=outmod_p, neutral_p=neutral_p)
@@ -382,7 +383,7 @@ def cross_modularity_index(a1, canonical_ci, n=100, inmod_p=.25, outmod_p=.05,
         accum += eth_q 
 
         if not quiet:
-            print 'trial %i, metric so far %.3f'%(i,accum/(i+1))
+            print('trial %i, metric so far %.3f'%(i,accum/(i+1)))
         
     return accum/n     
 
@@ -400,7 +401,7 @@ def simple_modularity_index(a1, canonical_ci, n=100, probtune_cap=.1,
         m = np.size(np.where(canonical_ci)) 
         norm = 2*m*(n-m)/(n*n)
         ewe_q = qac/norm
-        print qac,ewe_q
+        print(qac,ewe_q)
         return ewe_q
     elif normalize_by == 'data':
         a_degenerator = sample_degenerate_partitions(a1, 
@@ -408,15 +409,15 @@ def simple_modularity_index(a1, canonical_ci, n=100, probtune_cap=.1,
             quiet=True)
 
         accum=0
-        for i in xrange(n):
-            _, qa = a_degenerator.next()
+        for i in range(n):
+            _, qa = next(a_degenerator)
             norm = qa
             ewe_q = qac/norm
             # ewe is the pan-nigerian letter for alveolar implosive
             accum += ewe_q
 
             if not quiet:
-                print 'trial %i, metric so far %.3f'%(i,accum/(i+1))
+                print('trial %i, metric so far %.3f'%(i,accum/(i+1)))
 
         return accum/n
     else:
@@ -431,16 +432,16 @@ def cross_modularity_degenerate_rate(a1,a2,omega,n=100):
     b_degenerator = sample_degenerate_partitions(a2)
 
     #rate=0
-    for i in xrange(n):
-        a_ci,qa = a_degenerator.next()
-        b_ci,qb = b_degenerator.next()
+    for i in range(n):
+        a_ci,qa = next(a_degenerator)
+        b_ci,qb = next(b_degenerator)
         _,qab = bct.modularity_und_sign(a1, b_ci)
         _,qba = bct.modularity_und_sign(a2, a_ci)
         eth_q = (qab+qba)/(qa+qb)
         if eth_q > omega:
             rate+=1
-        print 'trial %i, ethq=%.3f, estimated p-value %.3f for omega %.2f'%(
-            i,eth_q,(i+1-rate)/(i+1),omega)
+        print('trial %i, ethq=%.3f, estimated p-value %.3f for omega %.2f'%(
+            i,eth_q,(i+1-rate)/(i+1),omega))
 
     return (n-rate)/n
 
@@ -451,14 +452,14 @@ def cross_modularity_degenerate_raw(a1,a2,n=25,mc=.95,pc=.1):
         probtune_cap=pc)
 
     raw = []
-    for i in xrange(n):
-        a_ci,qa = a_degenerator.next()
-        b_ci,qb = b_degenerator.next()
+    for i in range(n):
+        a_ci,qa = next(a_degenerator)
+        b_ci,qb = next(b_degenerator)
         _,qab = bct.modularity_und_sign(a1, b_ci)
         _,qba = bct.modularity_und_sign(a2, a_ci)
         eth_q = (qab+qba)/(qa+qb)
 
-        print 'trial %i, ethq=%.3f'%(i,eth_q)
+        print('trial %i, ethq=%.3f'%(i,eth_q))
         raw.append(eth_q)
 
     return raw
@@ -472,30 +473,30 @@ def nonparametric_similarity_test(similarity_metric,a1,a2,null_model_gen_a1,
     true_similarity = similarity_metric(a1,a2)	
 
     count=0.
-    for shuff in xrange(1,nshuff+1):
+    for shuff in range(1,nshuff+1):
         flip = np.random.random() > .5
         if flip:
             #a1_surr,_ = bct.null_model_und_sign(a1,bin_swaps=1)
             #a1_surr,_ = bct.null_model_und_sign(a1)
             #a1_surr = bct.randmio_und(a1, 1)[0]
-            a1_surr = null_model_gen_a1.next()
+            a1_surr = next(null_model_gen_a1)
             a2_surr = a2
         else:
             a1_surr = a1
             #a2_surr = bct.randmio_und(a2, 1)[0]
             #a2_surr,_ = bct.null_model_und_sign(a2,bin_swaps=1)
             #a2_surr,_ = bct.null_model_und_sign(a2)
-            a2_surr = null_model_gen_a2.next()
+            a2_surr = next(null_model_gen_a2)
         
         surrogate_similarity = similarity_metric(a1_surr,a2_surr)
         if surrogate_similarity > true_similarity:
             count+=1
-        print 'surrogate similarity %.3f, true similarity %.3f'%(
-            surrogate_similarity, true_similarity)
-        print 'trial %i, p-value estimate so far %.4f'%(shuff, count/shuff)
+        print('surrogate similarity %.3f, true similarity %.3f'%(
+            surrogate_similarity, true_similarity))
+        print('trial %i, p-value estimate so far %.4f'%(shuff, count/shuff))
 
     p = count/nshuff
-    print 'test complete, p-value %.4f'%p
+    print('test complete, p-value %.4f'%p)
     return p 
 
 #def null_covariance(e,v,ed,n):
@@ -547,13 +548,13 @@ def mantel(a,b,n=1000):
 
     true_mantel = bct.corr_flat_und(a,b)   
     hits = 0
-    for i in xrange(n):
+    for i in range(n):
         rand_a = a[:, np.random.permutation(k)]
         test_mantel = bct.corr_flat_und(rand_a, b)
         if test_mantel > true_mantel:
             hits+=1
 
-        print 'permutation %i, hits %i'%(i,hits)
+        print('permutation %i, hits %i'%(i,hits))
 
     return hits/n
 
@@ -570,11 +571,11 @@ def agreement_from_degenerate_sampling( g, n=100, probtune_cap=.1, gamma=1,
 
     cis = []
 
-    for i in xrange(n):
-        a_ci, _ = a_degenerator.next()
+    for i in range(n):
+        a_ci, _ = next(a_degenerator)
         cis.append(a_ci) 
 
-    print np.shape(cis)
+    print(np.shape(cis))
 
     return bct.agreement(np.transpose(cis)).astype(float)
 
@@ -583,7 +584,7 @@ def singular_link_matrix( distance_matrix ):
         raise ValueError("Component-based barcode depends on having fully "
             "connected graph")
 
-    distances = zip(_apply_distfun(distance_matrix))
+    distances = list(zip(_apply_distfun(distance_matrix)))
     betti = len(distance_matrix)
 
     slm = np.zeros( np.shape(distance_matrix) )
@@ -705,7 +706,7 @@ def display_barcode( barcode ):
     n = max(barcode)
 
     bars = []
-    for i in xrange(1, n+1):
+    for i in range(1, n+1):
         bars.append(barcode[i])
 
     import pylab as pl
@@ -736,25 +737,25 @@ def nonparametric_barcode_cpt_test( matrix, null_model_generator, n=1000 ):
     distmat = ident_distmat( matrix )
     true_barcode = barcode_cpt( distmat )
     hits = 0
-    for i in xrange(1, n+1):
-        mat = null_model_generator.next() 
+    for i in range(1, n+1):
+        mat = next(null_model_generator) 
         dist = ident_dismat( mat )
         shuff_barcode = barcode_cpt( dist )
         if true_barcode == shuff_barcode:
             hits += 1
-        print 'trial %i, p-value estimate so far %.4f'%(i, hits/i)
+        print('trial %i, p-value estimate so far %.4f'%(i, hits/i))
     p = hits/n
-    print 'test complete, p-value %.4f'%p
+    print('test complete, p-value %.4f'%p)
     return p
 
 def barcode_directionality_comparator( b1, b2, surr_b1, surr_b2 ):
     #null hypothesis is that random barcodes dont uniformly differ in direction
     #this is too lenient, gives p ~ 30%
-    if not (b1.keys() == b2.keys() == surr_b1.keys() == surr_b2.keys()):
+    if not (list(b1.keys()) == list(b2.keys()) == list(surr_b1.keys()) == list(surr_b2.keys())):
         raise ValueError('bad keys')
         return False
 
-    for key in b1.keys():
+    for key in list(b1.keys()):
         dir = cmp( b1[key], b2[key] )
         dir_surr = cmp( surr_b1[key], surr_b2[key] )
 
@@ -770,11 +771,11 @@ def barcode_death_comparator( b1, b2, surr_b1, surr_b2 ):
     #differing death schedules
     #if all the barcode differences are sharper than surrogates, the hypothesis
     #is disproven
-    if not (b1.keys() == b2.keys() == surr_b1.keys() == surr_b2.keys()):
+    if not (list(b1.keys()) == list(b2.keys()) == list(surr_b1.keys()) == list(surr_b2.keys())):
         raise ValueError('bad keys')
         return False
 
-    for key in b1.keys():
+    for key in list(b1.keys()):
         death = b1[key] - b2[key]
         death_surr = surr_b1[key] - surr_b2[key]
         if np.abs(death_surr) > np.abs(death):
@@ -784,13 +785,13 @@ def barcode_death_comparator( b1, b2, surr_b1, surr_b2 ):
 def bottleneck_comparator( b1, b2, surr_b1, surr_b2 ):
     #null hypothesis the surrogate barcodes do not differ and therefore
     #dont have a greater bottleneck (maximum difference in barcodes)
-    if not (b1.keys() == b2.keys() == surr_b1.keys() == surr_b2.keys()):
+    if not (list(b1.keys()) == list(b2.keys()) == list(surr_b1.keys()) == list(surr_b2.keys())):
         raise ValueError('bad keys')
         return False
 
     bottleneck = 0
     bottleneck_surr = 0
-    for key in b1.keys():
+    for key in list(b1.keys()):
         death = b1[key] - b2[key]
         if death > bottleneck:
             bottleneck = death
@@ -803,17 +804,17 @@ def nonparametric_barcode_comparison( barcode1, barcode2, agen1, agen2,
     n=1000):
 
     hits = 0
-    for i in xrange(1, n+1):
-        surr1_barcode = barcode_cpt( ident_distmat( agen1.next() ))
-        surr2_barcode = barcode_cpt( ident_distmat( agen2.next() ))
+    for i in range(1, n+1):
+        surr1_barcode = barcode_cpt( ident_distmat( next(agen1) ))
+        surr2_barcode = barcode_cpt( ident_distmat( next(agen2) ))
         #if not barcode_directionality_comparator(
         #if barcode_death_comparator( 
         if bottleneck_comparator(
                 barcode1, barcode2, surr1_barcode, surr2_barcode):
             hits += 1
-        print 'trial %i, p-value estimate so far %.4f'%(i, hits/i)
+        print('trial %i, p-value estimate so far %.4f'%(i, hits/i))
     p = hits/n
-    print 'test complete, p-value %.4f'%p
+    print('test complete, p-value %.4f'%p)
     return p
 
 def modularity_preserving_null_model( W ):
@@ -823,8 +824,8 @@ def modularity_preserving_null_model( W ):
 # SMALL WORLD
 ###############################################################################
 
-from bct import breadthdist,charpath,invert
-from bct import (clustering_coef_bd, clustering_coef_bu, clustering_coef_wd,
+from .bct import breadthdist,charpath,invert
+from .bct import (clustering_coef_bd, clustering_coef_bu, clustering_coef_wd,
     clustering_coef_wu, distance_wei)
 
 def small_world_bd(W):
@@ -891,14 +892,14 @@ def small_world_wu(W):
     #dists = invert(W)
     #dists = ident_distmat( W )
     _lambda,_,_,_,_ = charpath(dists)
-    print np.mean(cc), _lambda
+    print(np.mean(cc), _lambda)
     return np.mean(cc)/_lambda
 
 def small_sigma(W, weighted=False):
     '''
     An implementation of small world coefficient (C/Crand)/(L/Lrand)
     '''
-    from bct import randmio_und, clustering_coef_wu, distance_wei, charpath
+    from .bct import randmio_und, clustering_coef_wu, distance_wei, charpath
 
     equiv_rand,_ = randmio_und(W, 5)
     c = np.mean(clustering_coef_wu(W))
@@ -915,7 +916,7 @@ def small_sigma(W, weighted=False):
     _lambda,_,_,_,_ = charpath(dists)
     lambda_r,_,_,_,_ = charpath(dists_r)
     
-    print c,cr,_lambda,lambda_r
+    print(c,cr,_lambda,lambda_r)
     sigma = (c/cr)/(_lambda/lambda_r)
     return sigma
 
@@ -923,7 +924,7 @@ def small_omega(W, weighted=False):
     '''
     An implementation of small world coefficient (Lrand/L - C/Clatt)
     '''
-    from bct import (randmio_und, latmio_und, clustering_coef_wu, 
+    from .bct import (randmio_und, latmio_und, clustering_coef_wu, 
         distance_wei, charpath, invert)
 
     equiv_rand,_ = randmio_und(W, 5)
@@ -950,7 +951,7 @@ def small_lambda(W, weighted=False):
     An implementation of small world coefficient ((C/Crand) / (L/Lrand))
     '''
 
-    from bct import (randmio_und, latmio_und, clustering_coef_wu, 
+    from .bct import (randmio_und, latmio_und, clustering_coef_wu, 
         distance_wei, charpath, invert, transitivity_wu)
 
     equiv_rand,_ = randmio_und(W, 5)
