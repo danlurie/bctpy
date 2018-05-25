@@ -102,14 +102,12 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
     q : float
         optimized q-statistic (modularity only)
     '''
-    np.random.seed(seed)
+    #np.random.seed(seed)
+    RS = np.random.RandomState(seed)
 
     n = len(W)
     s = np.sum(W)
-
-    if np.min(W) < -1e-10:
-        raise BCTParamError('adjmat must not contain negative weights')
-
+ 
     if ci is None:
         ci = np.arange(n) + 1
     else:
@@ -179,11 +177,15 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
         flag = True
         while flag:
             it += 1
-            if it > 1000:
+            
+            if it > 10000:
                 raise BCTParamError('Modularity infinite loop style G. '
+                                    'Cost function did not converge after 10k iterations. '
                                     'Please contact the developer.')
+            
             flag = False
-            for u in np.random.permutation(n):
+            #for u in np.random.permutation(n):
+            for u in RS.permutation(n):
                 ma = Mb[u] - 1
                 dQ = Hnm[u, :] - Hnm[u, ma] + B[u, u]  # algorithm condition
                 dQ[ma] = 0
