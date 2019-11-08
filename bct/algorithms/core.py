@@ -1,9 +1,16 @@
 from __future__ import division, print_function
 import numpy as np
+
+from ..utils.miscellaneous_utilities import get_rng, BCTParamError
 from .degree import degrees_dir, degrees_und, strengths_dir, strengths_und
 from .degree import strengths_und_sign
 
+from ..due import due, BibTeX
+from ..citations import NEWMAN2002, FOSTER2010, HAGMANN2008, COLIZZA2006, OPSAHL2008, HEUVEL2011
 
+
+@due.dcite(BibTeX(NEWMAN2002), description="Unweighted assortativity coefficient")
+@due.dcite(BibTeX(FOSTER2010), description="Unweighted assortativity coefficient")
 def assortativity_bin(CIJ, flag=0):
     '''
     The assortativity coefficient is a correlation coefficient between the
@@ -68,6 +75,8 @@ def assortativity_bin(CIJ, flag=0):
     return r
 
 
+@due.dcite(BibTeX(NEWMAN2002), description="Unweighted assortativity coefficient")
+@due.dcite(BibTeX(FOSTER2010), description="Unweighted assortativity coefficient")
 def assortativity_wei(CIJ, flag=0):
     '''
     The assortativity coefficient is a correlation coefficient between the
@@ -131,7 +140,7 @@ def assortativity_wei(CIJ, flag=0):
     return r
 
 
-def core_periphery_dir(W, gamma=1, C0=None):
+def core_periphery_dir(W, gamma=1, C0=None, seed=None):
     ''' 
     The optimal core/periphery subdivision is a partition of the network 
     into two nonoverlapping groups of nodes, a core group and a periphery
@@ -157,12 +166,16 @@ def core_periphery_dir(W, gamma=1, C0=None):
         0 < gamma < 1 detects large core, small periphery
     C0 : NxN np.ndarray
         Initial core structure
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
     '''
+    rng = get_rng(seed)
     n = len(W)
     np.fill_diagonal(W, 0)
 
     if C0 == None:
-        C = np.random.randint(2, size=(n,))
+        C = rng.randint(2, size=(n,))
     else:
         C = C0.copy()
 
@@ -177,7 +190,6 @@ def core_periphery_dir(W, gamma=1, C0=None):
     ncix, = np.where(np.logical_not(C))
     q = np.sum(B[np.ix_(cix, cix)]) - np.sum(B[np.ix_(ncix, ncix)])
 
-    print(q)
     #sqish
 
     flag = True
@@ -203,21 +215,13 @@ def core_periphery_dir(W, gamma=1, C0=None):
 
             max_Qt = np.max(Qt[ixes])
             u, = np.where(np.abs(Qt[ixes]-max_Qt) < 1e-10)
-            print(np.where(np.abs(Qt[ixes]-max_Qt) < 1e-10))
-            print(Qt[ixes])
-            print(max_Qt)
             #tunourn
-            u = u[np.random.randint(len(u))]
-            print(np.sum(Ct))
+            u = u[rng.randint(len(u))]
             Ct[ixes[u]] = np.logical_not(Ct[ixes[u]])
-            print(np.sum(Ct))
             #casga
 
             ixes = np.delete(ixes, u)
             
-            print(max_Qt - q)
-            print(len(ixes))
-
             if max_Qt - q > 1e-10:
                 flag = True
                 C = Ct.copy()
@@ -232,6 +236,7 @@ def core_periphery_dir(W, gamma=1, C0=None):
     return C, q
 
 
+@due.dcite(BibTeX(HAGMANN2008), description="Unweighted directed k-core")
 def kcore_bd(CIJ, k, peel=False):
     '''
     The k-core is the largest subnetwork comprising nodes of degree at
@@ -300,6 +305,7 @@ def kcore_bd(CIJ, k, peel=False):
         return CIJkcore, kn
 
 
+@due.dcite(BibTeX(HAGMANN2008), description="Unweighted undirected k-core")
 def kcore_bu(CIJ, k, peel=False):
     '''
     The k-core is the largest subnetwork comprising nodes of degree at
@@ -412,6 +418,10 @@ def local_assortativity_wu_sign(W):
 
     return loc_assort_pos, loc_assort_neg
 
+
+@due.dcite(BibTeX(COLIZZA2006), description="Rich club; binary, directed")
+@due.dcite(BibTeX(OPSAHL2008), description="Rich club; binary, directed")
+@due.dcite(BibTeX(HEUVEL2011), description="Rich club; binary, directed")
 def rich_club_bd(CIJ, klevel=None):
     '''
     The rich club coefficient, R, at level k is the fraction of edges that
@@ -458,6 +468,9 @@ def rich_club_bd(CIJ, klevel=None):
     return R, Nk, Ek
 
 
+@due.dcite(BibTeX(COLIZZA2006), description="Rich club; binary, undirected")
+@due.dcite(BibTeX(OPSAHL2008), description="Rich club; binary, undirected")
+@due.dcite(BibTeX(HEUVEL2011), description="Rich club; binary, undirected")
 def rich_club_bu(CIJ, klevel=None):
     '''
     The rich club coefficient, R, at level k is the fraction of edges that
@@ -502,6 +515,9 @@ def rich_club_bu(CIJ, klevel=None):
     return R, Nk, Ek
 
 
+@due.dcite(BibTeX(COLIZZA2006), description="Rich club; weighted, directed")
+@due.dcite(BibTeX(OPSAHL2008), description="Rich club; weighted, directed")
+@due.dcite(BibTeX(HEUVEL2011), description="Rich club; weighted, directed")
 def rich_club_wd(CIJ, klevel=None):
     '''
     Parameters
@@ -549,6 +565,9 @@ def rich_club_wd(CIJ, klevel=None):
     return Rw
 
 
+@due.dcite(BibTeX(COLIZZA2006), description="Rich club; weighted, undirected")
+@due.dcite(BibTeX(OPSAHL2008), description="Rich club; weighted, undirected")
+@due.dcite(BibTeX(HEUVEL2011), description="Rich club; weighted, undirected")
 def rich_club_wu(CIJ, klevel=None):
     '''
     Parameters

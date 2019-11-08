@@ -1,6 +1,11 @@
 from __future__ import division, print_function
 import numpy as np
-from bct.utils import BCTParamError, normalize
+from bct.utils import BCTParamError, normalize, get_rng
+from ..due import BibTeX, due
+from ..citations import (
+    LEICHT2008, REICHARDT2006, GOOD2010, SUN2008, RUBINOV2011,
+    BLONDEL2008, MEILA2007
+)
 
 
 def ci2ls(ci):
@@ -92,8 +97,9 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
             'potts' uses Potts model Hamiltonian.
             'negative_sym' symmetric treatment of negative weights
             'negative_asym' asymmetric treatment of negative weights
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -102,12 +108,13 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
     q : float
         optimized q-statistic (modularity only)
     '''
-    #np.random.seed(seed)
-    RS = np.random.RandomState(seed)
-
+    rng = get_rng(seed)
     n = len(W)
     s = np.sum(W)
- 
+
+    #if np.min(W) < -1e-10:
+    #    raise BCTParamError('adjmat must not contain negative weights')
+
     if ci is None:
         ci = np.arange(n) + 1
     else:
@@ -116,17 +123,17 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
         _, ci = np.unique(ci, return_inverse=True)
         ci += 1
     Mb = ci.copy()
-
+    renormalize = False
     if B in ('negative_sym', 'negative_asym'):
+        renormalize = True
         W0 = W * (W > 0)
         s0 = np.sum(W0)
-        B0 = W0 - gamma * np.outer(np.sum(W0, axis=1), np.sum(W, axis=0)) / s0
+        B0 = W0 - gamma * np.outer(np.sum(W0, axis=1), np.sum(W0, axis=0)) / s0
 
-        W1 = W * (W < 0)
+        W1 = -W * (W < 0)
         s1 = np.sum(W1)
         if s1:
-            B1 = (W1 - gamma * np.outer(np.sum(W1, axis=1), np.sum(W1, axis=0))
-                / s1)
+            B1 = W1 - gamma * np.outer(np.sum(W1, axis=1), np.sum(W1, axis=0)) / s1
         else:
             B1 = 0
 
@@ -143,9 +150,9 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
     elif B == 'potts':
         B = W - gamma * np.logical_not(W)
     elif B == 'negative_sym':
-        B = B0 / (s0 + s1) - B1 / (s0 + s1)
+        B = (B0 / (s0 + s1)) - (B1 / (s0 + s1))
     elif B == 'negative_asym':
-        B = B0 / s0 - B1 / (s0 + s1)
+        B = (B0 / s0) - (B1 / (s0 + s1))
     else:
         try:
             B = np.array(B)
@@ -159,7 +166,7 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
             print ('Warning: objective function matrix not symmetric, '
                    'symmetrizing')
             B = (B + B.T) / 2
-
+    
     Hnm = np.zeros((n, n))
     for m in range(1, n + 1):
         Hnm[:, m - 1] = np.sum(B[:, ci == m], axis=1)  # node to module degree
@@ -184,8 +191,7 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
                                     'Please contact the developer.')
             
             flag = False
-            #for u in np.random.permutation(n):
-            for u in RS.permutation(n):
+            for u in rng.permutation(n):
                 ma = Mb[u] - 1
                 dQ = Hnm[u, :] - Hnm[u, ma] + B[u, u]  # algorithm condition
                 dQ[ma] = 0
@@ -230,9 +236,14 @@ def community_louvain(W, gamma=1, ci=None, B='modularity', seed=None):
         Hm = H.copy()
 
         q0 = q
-        q = np.trace(B) / s  # compute modularity
 
-    return ci, q
+        q = np.trace(B)  # compute modularity
+    
+    # Workaround to normalize
+    if not renormalize:
+        return ci, q/s
+    else:
+        return ci, q
 
 
 def link_communities(W, type_clustering='single'):
@@ -458,6 +469,22 @@ def link_communities(W, type_clustering='single'):
     return M
 
 
+def _safe_squeeze(arr, *args, **kwargs):
+    """
+    numpy.squeeze will reduce a 1-item array down to a zero-dimensional "array",
+    which is not necessarily desirable.
+    This function does the squeeze operation, but ensures that there is at least
+    1 dimension in the output.
+    """
+    out = np.squeeze(arr, *args, **kwargs)
+    if np.ndim(out) == 0:
+        out = out.reshape((1,))
+    return out
+
+
+@due.dcite(BibTeX(LEICHT2008), description="Directed modularity")
+@due.dcite(BibTeX(REICHARDT2006), description="Directed modularity")
+@due.dcite(BibTeX(GOOD2010), description="Directed modularity")
 def modularity_dir(A, gamma=1, kci=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -510,11 +537,11 @@ def modularity_dir(A, gamma=1, kci=None):
 
         vals, vecs = linalg.eig(modmat)  # biggest eigendecomposition
         rlvals = np.real(vals)
-        max_eigvec = np.squeeze(vecs[:, np.where(rlvals == np.max(rlvals))])
+        max_eigvec = _safe_squeeze(vecs[:, np.where(rlvals == np.max(rlvals))])
         if max_eigvec.ndim > 1:  # if multiple max eigenvalues, pick one
             max_eigvec = max_eigvec[:, 0]
         # initial module assignments
-        mod_asgn = np.squeeze((max_eigvec >= 0) * 2 - 1)
+        mod_asgn = _safe_squeeze((max_eigvec >= 0) * 2 - 1)
         q = np.dot(mod_asgn, np.dot(modmat, mod_asgn))  # modularity change
 
         if q > 0:  # change in modularity was positive
@@ -560,6 +587,8 @@ def modularity_dir(A, gamma=1, kci=None):
     return ci, q
 
 
+@due.dcite(BibTeX(SUN2008), description="Finetuned directed modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Finetuned directed modularity")
 def modularity_finetune_dir(W, ci=None, gamma=1, seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -580,8 +609,9 @@ def modularity_finetune_dir(W, ci=None, gamma=1, seed=None):
     gamma : float
         resolution parameter. default value=1. Values 0 <= gamma < 1 detect
         larger modules while gamma > 1 detects smaller modules.
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -595,7 +625,7 @@ def modularity_finetune_dir(W, ci=None, gamma=1, seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)  # number of nodes
     if ci is None:
@@ -620,7 +650,7 @@ def modularity_finetune_dir(W, ci=None, gamma=1, seed=None):
     flag = True
     while flag:
         flag = False
-        for u in np.random.permutation(n):  # loop over nodes in random order
+        for u in rng.permutation(n):  # loop over nodes in random order
             ma = ci[u] - 1  # current module of u
             # algorithm condition
             dq_o = ((knm_o[u, :] - knm_o[u, ma] + W[u, u]) -
@@ -661,6 +691,8 @@ def modularity_finetune_dir(W, ci=None, gamma=1, seed=None):
     return ci, q
 
 
+@due.dcite(BibTeX(SUN2008), description="Finetuned undirected modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Finetuned undirected modularity")
 def modularity_finetune_und(W, ci=None, gamma=1, seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -681,8 +713,9 @@ def modularity_finetune_und(W, ci=None, gamma=1, seed=None):
     gamma : float
         resolution parameter. default value=1. Values 0 <= gamma < 1 detect
         larger modules while gamma > 1 detects smaller modules.
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -696,7 +729,7 @@ def modularity_finetune_und(W, ci=None, gamma=1, seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     #import time
     n = len(W)  # number of nodes
@@ -717,7 +750,7 @@ def modularity_finetune_und(W, ci=None, gamma=1, seed=None):
     while flag:
         flag = False
 
-        for u in np.random.permutation(n):
+        for u in rng.permutation(n):
             # for u in np.arange(n):
             ma = ci[u] - 1
             # time.sleep(1)
@@ -758,6 +791,8 @@ def modularity_finetune_und(W, ci=None, gamma=1, seed=None):
     return ci, q
 
 
+@due.dcite(BibTeX(SUN2008), description="Finetuned directed signed modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Finetuned directed signed modularity")
 def modularity_finetune_und_sign(W, qtype='sta', gamma=1, ci=None, seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -782,8 +817,9 @@ def modularity_finetune_und_sign(W, qtype='sta', gamma=1, ci=None, seed=None):
         larger modules while gamma > 1 detects smaller modules.
     ci : Nx1 np.ndarray | None
         initial community affiliation vector
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -797,7 +833,7 @@ def modularity_finetune_und_sign(W, qtype='sta', gamma=1, ci=None, seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)  # number of nodes/modules
     if ci is None:
@@ -854,7 +890,7 @@ def modularity_finetune_und_sign(W, qtype='sta', gamma=1, ci=None, seed=None):
         if h > 1000:
             raise BCTParamError('Modularity infinite loop style D')
         flag = False
-        for u in np.random.permutation(n):  # loop over nodes in random order
+        for u in rng.permutation(n):  # loop over nodes in random order
             ma = ci[u] - 1  # current module of u
             dq0 = ((Knm0[u, :] + W0[u, u] - Knm0[u, ma]) -
                    gamma * Kn0[u] * (Km0 + Kn0[u] - Km0[ma]) / s0)
@@ -891,6 +927,9 @@ def modularity_finetune_und_sign(W, qtype='sta', gamma=1, ci=None, seed=None):
     return ci, q
 
 
+@due.dcite(BibTeX(BLONDEL2008), description="Louvain directed modularity")
+@due.dcite(BibTeX(REICHARDT2006), description="Louvain directed modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Louvain directed modularity")
 def modularity_louvain_dir(W, gamma=1, hierarchy=False, seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -912,8 +951,9 @@ def modularity_louvain_dir(W, gamma=1, hierarchy=False, seed=None):
         larger modules while gamma > 1 detects smaller modules.
     hierarchy : bool
         Enables hierarchical output. Defalut value=False
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -929,7 +969,7 @@ def modularity_louvain_dir(W, gamma=1, hierarchy=False, seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)  # number of nodes
     s = np.sum(W)  # total weight of edges
@@ -963,7 +1003,7 @@ def modularity_louvain_dir(W, gamma=1, hierarchy=False, seed=None):
             flag = False
 
             # loop over nodes in random order
-            for u in np.random.permutation(n):
+            for u in rng.permutation(n):
                 ma = m[u] - 1
                 # algorithm condition
                 dq_o = ((knm_o[u, :] - knm_o[u, ma] + W[u, u]) -
@@ -1020,6 +1060,9 @@ def modularity_louvain_dir(W, gamma=1, hierarchy=False, seed=None):
         return ci[h - 1], q[h - 1]
 
 
+@due.dcite(BibTeX(BLONDEL2008), description="Louvain undirected modularity")
+@due.dcite(BibTeX(REICHARDT2006), description="Louvain undirected modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Louvain undirected modularity")
 def modularity_louvain_und(W, gamma=1, hierarchy=False, seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -1041,8 +1084,9 @@ def modularity_louvain_und(W, gamma=1, hierarchy=False, seed=None):
         larger modules while gamma > 1 detects smaller modules.
     hierarchy : bool
         Enables hierarchical output. Defalut value=False
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1058,7 +1102,7 @@ def modularity_louvain_und(W, gamma=1, hierarchy=False, seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)  # number of nodes
     s = np.sum(W)  # weight of edges
@@ -1093,7 +1137,7 @@ def modularity_louvain_und(W, gamma=1, hierarchy=False, seed=None):
             flag = False
 
             # loop over nodes in random order
-            for i in np.random.permutation(n):
+            for i in rng.permutation(n):
                 ma = m[i] - 1
                 # algorithm condition
                 dQ = ((Knm[i, :] - Knm[i, ma] + W[i, i]) -
@@ -1150,6 +1194,9 @@ def modularity_louvain_und(W, gamma=1, hierarchy=False, seed=None):
         return ci[h - 1], q[h - 1]
 
 
+@due.dcite(BibTeX(BLONDEL2008), description="Louvain undirected signed modularity")
+@due.dcite(BibTeX(REICHARDT2006), description="Louvain undirected signed modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Louvain undirected signed modularity")
 def modularity_louvain_und_sign(W, gamma=1, qtype='sta', seed=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -1177,8 +1224,9 @@ def modularity_louvain_und_sign(W, gamma=1, qtype='sta', seed=None):
     gamma : float
         resolution parameter. default value=1. Values 0 <= gamma < 1 detect
         larger modules while gamma > 1 detects smaller modules.
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1192,7 +1240,7 @@ def modularity_louvain_und_sign(W, gamma=1, qtype='sta', seed=None):
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)  # number of nodes
 
@@ -1251,7 +1299,7 @@ def modularity_louvain_und_sign(W, gamma=1, qtype='sta', seed=None):
                                     'This was probably caused by passing in a directed matrix.')
             flag = False
             # loop over nodes in random order
-            for u in np.random.permutation(nh):
+            for u in rng.permutation(nh):
                 ma = m[u] - 1
                 dQ0 = ((knm0[u, :] + W0[u, u] - knm0[u, ma]) -
                        gamma * kn0[u] * (km0 + kn0[u] - km0[ma]) / s0)  # positive dQ
@@ -1313,6 +1361,8 @@ def modularity_louvain_und_sign(W, gamma=1, qtype='sta', seed=None):
     return ci_ret, q[-1]
 
 
+@due.dcite(BibTeX(SUN2008), description="Probabilistic finetuned undirected modularity")
+@due.dcite(BibTeX(RUBINOV2011), description="Probabilistic finetuned undirected modularity")
 def modularity_probtune_und_sign(W, qtype='sta', gamma=1, ci=None, p=.45,
                                  seed=None):
     '''
@@ -1344,8 +1394,9 @@ def modularity_probtune_und_sign(W, qtype='sta', gamma=1, ci=None, p=.45,
         initial community affiliation vector
     p : float
         probability of random node moves. Default value = 0.45
-    seed : int | None
-        random seed. default value=None. if None, seeds from /dev/urandom.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1359,7 +1410,7 @@ def modularity_probtune_und_sign(W, qtype='sta', gamma=1, ci=None, p=.45,
     Ci and Q may vary from run to run, due to heuristics in the
     algorithm. Consequently, it may be worth to compare multiple runs.
     '''
-    np.random.seed(seed)
+    rng = get_rng(seed)
 
     n = len(W)
     if ci is None:
@@ -1409,11 +1460,11 @@ def modularity_probtune_und_sign(W, qtype='sta', gamma=1, ci=None, p=.45,
         s1 = 1
         d1 = 0
 
-    for u in np.random.permutation(n):  # loop over nodes in random order
+    for u in rng.permutation(n):  # loop over nodes in random order
         ma = ci[u] - 1  # current module
-        r = np.random.random() < p
+        r = rng.random_sample() < p
         if r:
-            mb = np.random.randint(n)  # select new module randomly
+            mb = rng.randint(n)  # select new module randomly
         else:
             dq0 = ((Knm0[u, :] + W0[u, u] - Knm0[u, ma]) -
                    gamma * Kn0[u] * (Km0 + Kn0[u] - Km0[ma]) / s0)
@@ -1447,6 +1498,9 @@ def modularity_probtune_und_sign(W, qtype='sta', gamma=1, ci=None, p=.45,
     return ci, q
 
 
+@due.dcite(BibTeX(LEICHT2008), description="Undirected modularity")
+@due.dcite(BibTeX(REICHARDT2006), description="Undirected modularity")
+@due.dcite(BibTeX(GOOD2010), description="Undirected modularity")
 def modularity_und(A, gamma=1, kci=None):
     '''
     The optimal community structure is a subdivision of the network into
@@ -1499,11 +1553,11 @@ def modularity_und(A, gamma=1, kci=None):
 
         vals, vecs = linalg.eigh(modmat)  # biggest eigendecomposition
         rlvals = np.real(vals)
-        max_eigvec = np.squeeze(vecs[:, np.where(rlvals == np.max(rlvals))])
+        max_eigvec = _safe_squeeze(vecs[:, np.where(rlvals == np.max(rlvals))])
         if max_eigvec.ndim > 1:  # if multiple max eigenvalues, pick one
             max_eigvec = max_eigvec[:, 0]
         # initial module assignments
-        mod_asgn = np.squeeze((max_eigvec >= 0) * 2 - 1)
+        mod_asgn = _safe_squeeze((max_eigvec >= 0) * 2 - 1)
         q = np.dot(mod_asgn, np.dot(modmat, mod_asgn))  # modularity change
 
         if q > 0:  # change in modularity was positive
@@ -1630,6 +1684,7 @@ def modularity_und_sign(W, ci, qtype='sta'):
     return ci, q
 
 
+@due.dcite(BibTeX(MEILA2007), description="Partition distance")
 def partition_distance(cx, cy):
     '''
     This function quantifies the distance between pairs of community

@@ -1,11 +1,15 @@
 from __future__ import division, print_function
 import numpy as np
-from bct.utils import BCTParamError, binarize
+from bct.utils import BCTParamError, binarize, get_rng
 from bct.utils import pick_four_unique_nodes_quickly
 from .clustering import number_of_components
+from ..citations import MASLOV2002, SPORNS2004, RUBINOV2011
+from ..due import BibTeX, due
 
 
-def latmio_dir_connected(R, itr, D=None):
+@due.dcite(BibTeX(MASLOV2002), description="Latticize directed connected network")
+@due.dcite(BibTeX(SPORNS2004), description="Latticize directed connected network")
+def latmio_dir_connected(R, itr, D=None, seed=None):
     '''
     This function "latticizes" a directed network, while preserving the in-
     and out-degree distributions. In weighted networks, the function
@@ -23,6 +27,9 @@ def latmio_dir_connected(R, itr, D=None):
     D : np.ndarray | None
         distance-to-diagonal matrix. Defaults to the actual distance matrix
         if not specified.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -35,9 +42,10 @@ def latmio_dir_connected(R, itr, D=None):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     n = len(R)
 
-    ind_rp = np.random.permutation(n)  # random permutation of nodes
+    ind_rp = rng.permutation(n)  # random permutation of nodes
     R = R.copy()
     R = R[np.ix_(ind_rp, ind_rp)]
 
@@ -67,10 +75,10 @@ def latmio_dir_connected(R, itr, D=None):
         while att <= max_attempts:  # while not rewired
             rewire = True
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -124,7 +132,9 @@ def latmio_dir_connected(R, itr, D=None):
     return Rlatt, R, ind_rp, eff
 
 
-def latmio_dir(R, itr, D=None):
+@due.dcite(BibTeX(MASLOV2002), description="Latticize directed network")
+@due.dcite(BibTeX(SPORNS2004), description="Latticize directed network")
+def latmio_dir(R, itr, D=None, seed=None):
     '''
     This function "latticizes" a directed network, while preserving the in-
     and out-degree distributions. In weighted networks, the function
@@ -139,6 +149,9 @@ def latmio_dir(R, itr, D=None):
     D : np.ndarray | None
         distance-to-diagonal matrix. Defaults to the actual distance matrix
         if not specified.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -151,9 +164,10 @@ def latmio_dir(R, itr, D=None):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     n = len(R)
 
-    ind_rp = np.random.permutation(n)  # randomly reorder matrix
+    ind_rp = rng.permutation(n)  # randomly reorder matrix
     R = R.copy()
     R = R[np.ix_(ind_rp, ind_rp)]
 
@@ -182,10 +196,10 @@ def latmio_dir(R, itr, D=None):
         att = 0
         while att <= max_attempts:  # while not rewired
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -215,7 +229,9 @@ def latmio_dir(R, itr, D=None):
     return Rlatt, R, ind_rp, eff
 
 
-def latmio_und_connected(R, itr, D=None):
+@due.dcite(BibTeX(MASLOV2002), description="Latticize undirected connected network")
+@due.dcite(BibTeX(SPORNS2004), description="Latticize undirected connected network")
+def latmio_und_connected(R, itr, D=None, seed=None):
     '''
     This function "latticizes" an undirected network, while preserving the
     degree distribution. The function does not preserve the strength
@@ -233,6 +249,9 @@ def latmio_und_connected(R, itr, D=None):
     D : np.ndarray | None
         distance-to-diagonal matrix. Defaults to the actual distance matrix
         if not specified.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -245,7 +264,8 @@ def latmio_und_connected(R, itr, D=None):
     eff : int
         number of actual rewirings carried out
     '''
-    if not np.all(R == R.T):
+    rng = get_rng(seed)
+    if not np.allclose(R == R.T):
         raise BCTParamError("Input must be undirected")
 
     if number_of_components(R) > 1:
@@ -253,7 +273,7 @@ def latmio_und_connected(R, itr, D=None):
 
     n = len(R)
 
-    ind_rp = np.random.permutation(n)  # randomly reorder matrix
+    ind_rp = rng.permutation(n)  # randomly reorder matrix
     R = R.copy()
     R = R[np.ix_(ind_rp, ind_rp)]
 
@@ -282,10 +302,10 @@ def latmio_und_connected(R, itr, D=None):
         while att <= max_attempts:
             rewire = True
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -294,7 +314,7 @@ def latmio_und_connected(R, itr, D=None):
                 if a != c and a != d and b != c and b != d:
                     break
 
-            if np.random.random() > .5:
+            if rng.random_sample() > .5:
                 i.setflags(write=True)
                 j.setflags(write=True)
                 i[e2] = d
@@ -347,7 +367,9 @@ def latmio_und_connected(R, itr, D=None):
     return Rlatt, R, ind_rp, eff
 
 
-def latmio_und(R, itr, D=None):
+@due.dcite(BibTeX(MASLOV2002), description="Latticize undirected network")
+@due.dcite(BibTeX(SPORNS2004), description="Latticize undirected network")
+def latmio_und(R, itr, D=None, seed=None):
     '''
     This function "latticizes" an undirected network, while preserving the
     degree distribution. The function does not preserve the strength
@@ -362,6 +384,9 @@ def latmio_und(R, itr, D=None):
     D : np.ndarray | None
         distance-to-diagonal matrix. Defaults to the actual distance matrix
         if not specified.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -374,9 +399,10 @@ def latmio_und(R, itr, D=None):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     n = len(R)
 
-    ind_rp = np.random.permutation(n)  # randomly reorder matrix
+    ind_rp = rng.permutation(n)  # randomly reorder matrix
     R = R.copy()
     R = R[np.ix_(ind_rp, ind_rp)]
 
@@ -404,10 +430,10 @@ def latmio_und(R, itr, D=None):
         att = 0
         while att <= max_attempts:
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -416,7 +442,7 @@ def latmio_und(R, itr, D=None):
                 if a != c and a != d and b != c and b != d:
                     break
 
-            if np.random.random() > .5:
+            if rng.random_sample() > .5:
                 i.setflags(write=True)
                 j.setflags(write=True)
                 i[e2] = d
@@ -448,7 +474,7 @@ def latmio_und(R, itr, D=None):
     return Rlatt, R, ind_rp, eff
 
 
-def makeevenCIJ(n, k, sz_cl):
+def makeevenCIJ(n, k, sz_cl, seed=None):
     '''
     This function generates a random, directed network with a specified
     number of fully connected modules linked together by evenly distributed
@@ -462,6 +488,9 @@ def makeevenCIJ(n, k, sz_cl):
         number of edges
     sz_cl : int
         size of clusters (must be power of 2)
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -474,6 +503,7 @@ def makeevenCIJ(n, k, sz_cl):
             A warning is generated if all modules contain more edges than K.
             Cluster size is 2^sz_cl;
     '''
+    rng = get_rng(seed)
     # compute number of hierarchical levels and adjust cluster size
     mx_lvl = int(np.floor(np.log2(n)))
     sz_cl -= 1
@@ -513,7 +543,7 @@ def makeevenCIJ(n, k, sz_cl):
     a, b = np.where(np.logical_not(CIJp + np.eye(n)))
 
     # assign remK randomly dstributed connections
-    rp = np.random.permutation(len(a))
+    rp = rng.permutation(len(a))
     a = a[rp[:rem_k]]
     b = b[rp[:rem_k]]
     for ai, bi in zip(a, b):
@@ -522,7 +552,7 @@ def makeevenCIJ(n, k, sz_cl):
     return np.array(CIJp, dtype=int)
 
 
-def makefractalCIJ(mx_lvl, E, sz_cl):
+def makefractalCIJ(mx_lvl, E, sz_cl, seed=None):
     '''
     This function generates a directed network with a hierarchical modular
     organization. All modules are fully connected and connection density
@@ -536,6 +566,9 @@ def makefractalCIJ(mx_lvl, E, sz_cl):
         connection density fall off per level
     sz_cl : int
         size of clusters (must be power of 2)
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -544,6 +577,7 @@ def makefractalCIJ(mx_lvl, E, sz_cl):
     K : int
         number of connections present in output CIJ
     '''
+    rng = get_rng(seed)
     # make a stupid little template
     t = np.ones((2, 2)) * 2
 
@@ -569,7 +603,7 @@ def makefractalCIJ(mx_lvl, E, sz_cl):
     ee = mx_lvl - CIJ - sz_cl
     ee = (ee > 0) * ee
     prob = (1 / E**ee) * (np.ones((s, s)) - np.eye(s))
-    CIJ = (prob > np.random.random((n, n)))
+    CIJ = (prob > rng.random_sample((n, n)))
 
     # count connections
     k = np.sum(CIJ)
@@ -577,7 +611,7 @@ def makefractalCIJ(mx_lvl, E, sz_cl):
     return np.array(CIJ, dtype=int), k
 
 
-def makerandCIJdegreesfixed(inv, outv):
+def makerandCIJdegreesfixed(inv, outv, seed=None):
     '''
     This function generates a directed random network with a specified
     in-degree and out-degree sequence.
@@ -588,6 +622,9 @@ def makerandCIJdegreesfixed(inv, outv):
         in-degree vector
     outv : Nx1 np.ndarray
         out-degree vector
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -611,6 +648,8 @@ def makerandCIJdegreesfixed(inv, outv):
         computing infinite degree matrices, but offers good performance
         otherwise.
     '''
+    rng = get_rng(seed)
+
     n = len(inv)
     k = np.sum(inv)
     in_inv = np.zeros((k,))
@@ -625,7 +664,7 @@ def makerandCIJdegreesfixed(inv, outv):
         i_out += outv[i]
 
     CIJ = np.eye(n)
-    edges = np.array((out_inv, in_inv[np.random.permutation(k)]))
+    edges = np.array((out_inv, in_inv[rng.permutation(k)]))
 
     # create CIJ and check for double edges and self connections
     for i in range(k):
@@ -635,9 +674,9 @@ def makerandCIJdegreesfixed(inv, outv):
                 if len(tried) == k:
                     raise BCTParamError('Could not resolve the given '
                                         'in and out vectors')
-                switch = np.random.randint(k)
+                switch = rng.randint(k)
                 while switch in tried:
-                    switch = np.random.randint(k)
+                    switch = rng.randint(k)
                 if not (CIJ[edges[0, i], edges[1, switch]] or
                         CIJ[edges[0, switch], edges[1, i]]):
                     CIJ[edges[0, switch], edges[1, switch]] = 0
@@ -657,7 +696,7 @@ def makerandCIJdegreesfixed(inv, outv):
     return CIJ
 
 
-def makerandCIJ_dir(n, k):
+def makerandCIJ_dir(n, k, seed=None):
     '''
     This function generates a directed random network
 
@@ -667,6 +706,9 @@ def makerandCIJ_dir(n, k):
         number of vertices
     K : int
         number of edges
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -677,15 +719,16 @@ def makerandCIJ_dir(n, k):
     -----
     no connections are placed on the main diagonal.
     '''
+    rng = get_rng(seed)
     ix, = np.where(np.logical_not(np.eye(n)).flat)
-    rp = np.random.permutation(np.size(ix))
+    rp = rng.permutation(np.size(ix))
 
     CIJ = np.zeros((n, n))
     CIJ.flat[ix[rp][:k]] = 1
     return CIJ
 
 
-def makerandCIJ_und(n, k):
+def makerandCIJ_und(n, k, seed=None):
     '''
     This function generates an undirected random network
 
@@ -695,6 +738,9 @@ def makerandCIJ_und(n, k):
         number of vertices
     K : int
         number of edges
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -705,15 +751,16 @@ def makerandCIJ_und(n, k):
     -----
     no connections are placed on the main diagonal.
     '''
+    rng = get_rng(seed)
     ix, = np.where(np.triu(np.logical_not(np.eye(n))).flat)
-    rp = np.random.permutation(np.size(ix))
+    rp = rng.permutation(np.size(ix))
 
     CIJ = np.zeros((n, n))
     CIJ.flat[ix[rp][:k]] = 1
     return CIJ
 
 
-def makeringlatticeCIJ(n, k):
+def makeringlatticeCIJ(n, k, seed=None):
     '''
     This function generates a directed lattice network with toroidal
     boundary counditions (i.e. with ring-like "wrapping around").
@@ -724,6 +771,9 @@ def makeringlatticeCIJ(n, k):
         number of vertices
     K : int
         number of edges
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -736,6 +786,7 @@ def makeringlatticeCIJ(n, k):
     to the main diagonal, with wrapping around. No connections are made
     on the main diagonal. In/Outdegree is kept approx. constant at K/N.
     '''
+    rng = get_rng(seed)
     # initialize
     CIJ = np.zeros((n, n))
     CIJ1 = np.ones((n, n))
@@ -757,14 +808,14 @@ def makeringlatticeCIJ(n, k):
     overby = kk - k
     if overby:
         i, j = np.where(dCIJ)
-        rp = np.random.permutation(np.size(i))
+        rp = rng.permutation(np.size(i))
         for ii in range(overby):
             CIJ[i[rp[ii]], j[rp[ii]]] = 0
 
     return CIJ
 
 
-def maketoeplitzCIJ(n, k, s):
+def maketoeplitzCIJ(n, k, s, seed=None):
     '''
     This function generates a directed network with a Gaussian drop-off in
     edge density with increasing distance from the main diagonal. There are
@@ -778,6 +829,9 @@ def maketoeplitzCIJ(n, k, s):
         number of edges
     s : float
         standard deviation of toeplitz
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -788,6 +842,7 @@ def maketoeplitzCIJ(n, k, s):
     -----
     no connections are placed on the main diagonal.
     '''
+    rng = get_rng(seed)
     from scipy import linalg, stats
     pf = stats.norm.pdf(range(1, n), .5, s)
     template = linalg.toeplitz(np.append((0,), pf), r=np.append((0,), pf))
@@ -796,7 +851,7 @@ def maketoeplitzCIJ(n, k, s):
     CIJ = np.zeros((n, n))
     itr = 0
     while np.sum(CIJ) != k:
-        CIJ = (np.random.random((n, n)) < template)
+        CIJ = (rng.random_sample((n, n)) < template)
         itr += 1
         if itr > 10000:
             raise BCTParamError('Infinite loop was caught generating toeplitz '
@@ -806,7 +861,8 @@ def maketoeplitzCIJ(n, k, s):
     return CIJ
 
 
-def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1):
+@due.dcite(BibTeX(RUBINOV2011), description="Directed signed null model")
+def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1, seed=None):
     '''
     This function randomizes an directed network with positive and
     negative weights, while preserving the degree and strength
@@ -825,6 +881,9 @@ def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1):
         wei_freq == 0.1 implies that weights sorted each 10th step (faster,
             default value)
         wei_freq == 0 implies no sorting of weights (not recommended)
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -849,13 +908,14 @@ def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1):
        measure of strength-sequence accuracy and one could implement more
        formal tests (such as the Kolmogorov-Smirnov test) if desired.
     '''
+    rng = get_rng(seed)
     W = W.copy()
     n = len(W)
     np.fill_diagonal(W, 0)  # clear diagonal
     Ap = (W > 0)  # positive adjmat
 
     if np.size(np.where(Ap.flat)) < (n * (n - 1)):
-        W_r = randmio_und_signed(W, bin_swaps)
+        W_r = randmio_und_signed(W, bin_swaps, seed=rng)
         Ap_r = W_r > 0
         An_r = W_r < 0
     else:
@@ -889,7 +949,7 @@ def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1):
             for m in lq:  # iteratively explore at this period
                 # get indices of Lij that sort P
                 Oind = np.argsort(P.flat[Lij])
-                R = np.random.permutation(m)[:np.min((m, wei_period))]
+                R = rng.permutation(m)[:np.min((m, wei_period))]
                 for q, r in enumerate(R):
                     # choose random index of sorted expected weight
                     o = Oind[r]
@@ -924,7 +984,8 @@ def null_model_dir_sign(W, bin_swaps=5, wei_freq=.1):
     return W0, (rpos_in[0, 1], rpos_ou[0, 1], rneg_in[0, 1], rneg_ou[0, 1])
 
 
-def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
+@due.dcite(BibTeX(RUBINOV2011), description="Undirected signed null model")
+def null_model_und_sign(W, bin_swaps=5, wei_freq=.1, seed=None):
     '''
     This function randomizes an undirected network with positive and
     negative weights, while preserving the degree and strength
@@ -943,6 +1004,9 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
         wei_freq == 0.1 implies that weights sorted each 10th step (faster,
             default value)
         wei_freq == 0 implies no sorting of weights (not recommended)
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -968,7 +1032,8 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
         strength-sequence accuracy and one could implement more formal tests
         (such as the Kolmogorov-Smirnov test) if desired.
     '''
-    if not np.all(W == W.T):
+    rng = get_rng(seed)
+    if not np.allclose(W == W.T):
         raise BCTParamError("Input must be undirected")
     W = W.copy()
     n = len(W)
@@ -977,7 +1042,7 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
     An = (W < 0)  # negative adjmat
 
     if np.size(np.where(Ap.flat)) < (n * (n - 1)):
-        W_r, eff = randmio_und_signed(W, bin_swaps)
+        W_r, eff = randmio_und_signed(W, bin_swaps, seed=rng)
         Ap_r = W_r > 0
         An_r = W_r < 0
     else:
@@ -1010,7 +1075,7 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
             for m in lq:  # iteratively explore at this period
                 # get indices of Lij that sort P
                 Oind = np.argsort(P.flat[Lij])
-                R = np.random.permutation(m)[:np.min((m, wei_period))]
+                R = rng.permutation(m)[:np.min((m, wei_period))]
                 for q, r in enumerate(R):
                     # choose random index of sorted expected weight
                     o = Oind[r]
@@ -1049,7 +1114,8 @@ def null_model_und_sign(W, bin_swaps=5, wei_freq=.1):
     return W0, (rpos_in[0, 1], rpos_ou[0, 1], rneg_in[0, 1], rneg_ou[0, 1])
 
 
-def randmio_dir_connected(R, itr):
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, directed and connected")
+def randmio_dir_connected(R, itr, seed=None):
     '''
     This function randomizes a directed network, while preserving the in-
     and out-degree distributions. In weighted networks, the function
@@ -1064,6 +1130,9 @@ def randmio_dir_connected(R, itr):
         directed binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1072,6 +1141,7 @@ def randmio_dir_connected(R, itr):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     R = R.copy()
     n = len(R)
     i, j = np.where(R)
@@ -1086,10 +1156,10 @@ def randmio_dir_connected(R, itr):
         while att <= max_attempts:  # while not rewired
             rewire = True
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -1139,7 +1209,8 @@ def randmio_dir_connected(R, itr):
     return R, eff
 
 
-def randmio_dir(R, itr):
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, directed")
+def randmio_dir(R, itr, seed=None):
     '''
     This function randomizes a directed network, while preserving the in-
     and out-degree distributions. In weighted networks, the function
@@ -1151,6 +1222,9 @@ def randmio_dir(R, itr):
         directed binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1159,6 +1233,7 @@ def randmio_dir(R, itr):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     R = R.copy()
     n = len(R)
     i, j = np.where(R)
@@ -1172,10 +1247,10 @@ def randmio_dir(R, itr):
         att = 0
         while att <= max_attempts:  # while not rewired
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -1202,7 +1277,8 @@ def randmio_dir(R, itr):
     return R, eff
 
 
-def randmio_und_connected(R, itr):
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, undirected and connected")
+def randmio_und_connected(R, itr, seed=None):
     '''
     This function randomizes an undirected network, while preserving the
     degree distribution. The function does not preserve the strength
@@ -1211,8 +1287,8 @@ def randmio_und_connected(R, itr):
     to reach every other node in the network. The input network for this
     function must be connected.
 
-    NOTE the changes to the BCT matlab function of the same name 
-    made in the Jan 2016 release 
+    NOTE the changes to the BCT matlab function of the same name
+    made in the Jan 2016 release
     have not been propagated to this function because of substantially
     decreased time efficiency in the implementation. Expect these changes
     to be merged eventually.
@@ -1223,6 +1299,9 @@ def randmio_und_connected(R, itr):
         undirected binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1231,11 +1310,12 @@ def randmio_und_connected(R, itr):
     eff : int
         number of actual rewirings carried out
     '''
-    if not np.all(R == R.T):
+    if not np.allclose(R == R.T):
         raise BCTParamError("Input must be undirected")
 
     if number_of_components(R) > 1:
         raise BCTParamError("Input is not connected")
+    rng = get_rng(seed)
 
     R = R.copy()
     n = len(R)
@@ -1253,10 +1333,10 @@ def randmio_und_connected(R, itr):
         while att <= max_attempts:  # while not rewired
             rewire = True
             while True:
-                e1 = np.random.randint(k)
-                e2 = np.random.randint(k)
+                e1 = rng.randint(k)
+                e2 = rng.randint(k)
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -1265,7 +1345,7 @@ def randmio_und_connected(R, itr):
                 if a != c and a != d and b != c and b != d:
                     break  # all 4 vertices must be different
 
-            if np.random.random() > .5:
+            if rng.random_sample() > .5:
 
                 i.setflags(write=True)
                 j.setflags(write=True)
@@ -1316,7 +1396,8 @@ def randmio_und_connected(R, itr):
     return R, eff
 
 
-def randmio_dir_signed(R, itr):
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, directed and signed")
+def randmio_dir_signed(R, itr, seed=None):
     '''
     This function randomizes a directed weighted network with positively
     and negatively signed connections, while preserving the positive and
@@ -1330,6 +1411,9 @@ def randmio_dir_signed(R, itr):
         directed binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1338,6 +1422,7 @@ def randmio_dir_signed(R, itr):
     eff : int
         number of actual rewirings carried out
     '''
+    rng = get_rng(seed)
     R = R.copy()
     n = len(R)
 
@@ -1355,11 +1440,11 @@ def randmio_dir_signed(R, itr):
         att = 0
         while att <= max_attempts:
             #select four distinct vertices
-        
-            a, b, c, d = pick_four_unique_nodes_quickly(n)
 
-            #a, b, c, d = np.random.choice(n, 4)
-            #a, b, c, d = np.random.permutation(4)
+            a, b, c, d = pick_four_unique_nodes_quickly(n, rng)
+
+            #a, b, c, d = rng.choice(n, 4)
+            #a, b, c, d = rng.permutation(4)
 
             r0_ab = R[a, b]
             r0_cd = R[c, d]
@@ -1388,7 +1473,9 @@ def randmio_dir_signed(R, itr):
 
     return R, eff
 
-def randmio_und(R, itr):
+
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, undirected")
+def randmio_und(R, itr, seed=None):
     '''
     This function randomizes an undirected network, while preserving the
     degree distribution. The function does not preserve the strength
@@ -1400,6 +1487,9 @@ def randmio_und(R, itr):
         undirected binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1408,8 +1498,9 @@ def randmio_und(R, itr):
     eff : int
         number of actual rewirings carried out
     '''
-    if not np.all(R == R.T):
+    if not np.allclose(R == R.T):
         raise BCTParamError("Input must be undirected")
+    rng = get_rng(seed)
     R = R.copy()
     n = len(R)
     i, j = np.where(np.tril(R))
@@ -1425,9 +1516,9 @@ def randmio_und(R, itr):
         att = 0
         while att <= max_attempts:  # while not rewired
             while True:
-                e1, e2 = np.random.randint(k, size=(2,))
+                e1, e2 = rng.randint(k, size=(2,))
                 while e1 == e2:
-                    e2 = np.random.randint(k)
+                    e2 = rng.randint(k)
                 a = i[e1]
                 b = j[e1]
                 c = i[e2]
@@ -1436,7 +1527,7 @@ def randmio_und(R, itr):
                 if a != c and a != d and b != c and b != d:
                     break  # all 4 vertices must be different
 
-            if np.random.random() > .5:
+            if rng.random_sample() > .5:
                 i.setflags(write=True)
                 j.setflags(write=True)
                 i[e2] = d
@@ -1465,7 +1556,8 @@ def randmio_und(R, itr):
     return R, eff
 
 
-def randmio_und_signed(R, itr):
+@due.dcite(BibTeX(MASLOV2002), description="Randomisation, undirected and signed")
+def randmio_und_signed(R, itr, seed=None):
     '''
     This function randomizes an undirected weighted network with positive
     and negative weights, while simultaneously preserving the degree
@@ -1478,12 +1570,16 @@ def randmio_und_signed(R, itr):
         undirected binary/weighted connection matrix
     itr : int
         rewiring parameter. Each edge is rewired approximately itr times.
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
     R : NxN np.ndarray
         randomized network
     '''
+    rng = get_rng(seed)
     R = R.copy()
     n = len(R)
 
@@ -1496,7 +1592,7 @@ def randmio_und_signed(R, itr):
         att = 0
         while att <= max_attempts:
 
-            a, b, c, d = pick_four_unique_nodes_quickly(n)
+            a, b, c, d = pick_four_unique_nodes_quickly(n, rng)
 
             r0_ab = R[a, b]
             r0_cd = R[c, d]
@@ -1507,7 +1603,7 @@ def randmio_und_signed(R, itr):
             if (    np.sign(r0_ab) == np.sign(r0_cd) and
                     np.sign(r0_ad) == np.sign(r0_cb) and
                     np.sign(r0_ab) != np.sign(r0_ad)):
-        
+
                 R[a, d] = R[d, a] = r0_ab
                 R[a, b] = R[b, a] = r0_ad
 
@@ -1521,7 +1617,8 @@ def randmio_und_signed(R, itr):
 
     return R, eff
 
-def randomize_graph_partial_und(A, B, maxswap):
+
+def randomize_graph_partial_und(A, B, maxswap, seed=None):
     '''
     A = RANDOMIZE_GRAPH_PARTIAL_UND(A,B,MAXSWAP) takes adjacency matrices A
     and B and attempts to randomize matrix A by performing MAXSWAP
@@ -1536,6 +1633,9 @@ def randomize_graph_partial_und(A, B, maxswap):
         mask; edges to avoid
     maxswap : int
         number of rewirings
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
@@ -1550,6 +1650,7 @@ def randomize_graph_partial_und(A, B, maxswap):
       preserved.
     3. A must be undirected.
     '''
+    rng = get_rng(seed)
     A = A.copy()
     i, j = np.where(np.triu(A, 1))
     i.setflags(write=True)
@@ -1559,9 +1660,9 @@ def randomize_graph_partial_und(A, B, maxswap):
     nswap = 0
     while nswap < maxswap:
         while True:
-            e1, e2 = np.random.randint(m, size=(2,))
+            e1, e2 = rng.randint(m, size=(2,))
             while e1 == e2:
-                e2 = np.random.randint(m)
+                e2 = rng.randint(m)
             a = i[e1]
             b = j[e1]
             c = i[e2]
@@ -1570,7 +1671,7 @@ def randomize_graph_partial_und(A, B, maxswap):
             if a != c and a != d and b != c and b != d:
                 break  # all 4 vertices must be different
 
-        if np.random.random() > .5:
+        if rng.random_sample() > .5:
             i[e2] = d
             j[e2] = c  # flip edge c-d with 50% probability
             c = i[e2]
@@ -1593,7 +1694,8 @@ def randomize_graph_partial_und(A, B, maxswap):
     return A
 
 
-def randomizer_bin_und(R, alpha):
+@due.dcite(BibTeX(MASLOV2002), description="Randomize binary undirected")
+def randomizer_bin_und(R, alpha, seed=None):
     '''
     This function randomizes a binary undirected network, while preserving
     the degree distribution. The function directly searches for rewirable
@@ -1606,14 +1708,18 @@ def randomizer_bin_und(R, alpha):
         binary undirected connection matrix
     alpha : float
         fraction of edges to rewire
+    seed : hashable, optional
+        If None (default), use the np.random's global random state to generate random numbers.
+        Otherwise, use a new np.random.RandomState instance seeded with the given value.
 
     Returns
     -------
     R : NxN np.ndarray
         randomized network
     '''
+    rng = get_rng(seed)
     R = binarize(R, copy=True)  # binarize
-    if not np.all(R == R.T):
+    if not np.allclose(R == R.T):
         raise BCTParamError(
             'randomizer_bin_und only takes undirected matrices')
 
@@ -1652,7 +1758,7 @@ def randomizer_bin_und(R, alpha):
         raise BCTParamError("No possible randomization")
 
     for it in range(k):
-        if np.random.random() > alpha:
+        if rng.random_sample() > alpha:
             continue  # rewire alpha% of edges
 
         a = i[it]
@@ -1670,10 +1776,10 @@ def randomizer_bin_und(R, alpha):
         if np.size(ii):
             # choose one randomly
             nummates = np.size(ii)
-            mate = np.random.randint(nummates)
+            mate = rng.randint(nummates)
 
             # randomly orient the second edge
-            if np.random.random() > .5:
+            if rng.random_sample() > .5:
                 c = i_intersect[ii[mate]]
                 d = i_intersect[jj[mate]]
             else:

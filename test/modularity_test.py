@@ -1,4 +1,7 @@
-from load_samples import *
+import os
+from .load_samples import (
+    load_sample, load_directed_sample, load_signed_sample, load_directed_low_modularity_sample, TEST_DIR
+)
 import numpy as np
 import bct
 
@@ -103,7 +106,7 @@ def test_modularity_finetune_und_sign_actually_finetune():
 
     seed = 88215881
     np.random.seed(seed)
-    randomized_sample = np.random.random(size=(len(x), len(x)))
+    randomized_sample = np.random.random_sample(size=(len(x), len(x)))
     randomized_sample = randomized_sample + randomized_sample.T
     x[np.where(bct.threshold_proportional(randomized_sample, .2))] = 0
 
@@ -197,3 +200,11 @@ def test_community_louvain():
     ci, q = bct.community_louvain(x, seed=seed)
     print(q)
     assert np.allclose(q, 0.2583, atol=0.015)
+
+
+def test_modularity_dir_bug71():
+    """Regression test for bug described in issue #71"""
+    fpath = os.path.join(TEST_DIR, "failing_cases", "modularity_dir_example.csv")
+    x = np.loadtxt(fpath, int, delimiter=',')
+
+    bct.modularity_dir(x)
