@@ -644,6 +644,65 @@ def module_degree_zscore(W, ci, flag=0):
     Z[np.where(np.isnan(Z))] = 0
     return Z
 
+def module_degree_zscore_sign(W, ci):
+    '''
+    The within-module degree z-score is a within-module version of degree
+    centrality. This function is designed to run on weighted, signed 
+    networks. 
+
+    Parameters
+    ----------
+    W : NxN np.narray
+        binary/weighted directed/undirected connection matrix
+    ci : Nx1 np.array_like
+        community affiliation vector
+    
+    Returns
+    -------
+    Z_all : Nx1 np.ndarray
+        within-module degree Z-score (all edges)
+    Z_pos : Nx1 np.ndarray
+        within-module degree Z-score (positive edges)
+    Z_neg : Nx1 np.ndarray
+        within-module degree Z-score (negative edges)
+    '''
+    _, ci = np.unique(ci, return_inverse=True)
+    ci += 1
+
+   
+    # Traditional WMDz (all edges)
+    n = len(W)
+    Z_all = np.zeros((n,))  # number of vertices
+    for i in range(1, int(np.max(ci) + 1)):
+        Koi = np.sum(W[np.ix_(ci == i, ci == i)], axis=1)
+        Z_all[np.where(ci == i)] = (Koi - np.mean(Koi)) / np.std(Koi)
+
+    Z_all[np.where(np.isnan(Z_all))] = 0
+
+    # WMDz_pos (positive edges)
+    W_pos = W.copy()
+    W_pos[W_pos<0] = 0
+    Z_pos = np.zeros((n,))  # number of vertices
+    for i in range(1, int(np.max(ci) + 1)):
+        Koi_pos = np.sum(W_pos[np.ix_(ci == i, ci == i)], axis=1)
+        Z_pos[np.where(ci == i)] = (Koi_pos - np.mean(Koi_pos)) / np.std(Koi_pos)
+
+    Z_pos[np.where(np.isnan(Z_pos))] = 0
+
+    # WMDz_neg (negative edges)
+    W_neg = W.copy()
+    W_neg[W_neg>0] = 0
+    Z_neg = np.zeros((n,))  # number of vertices
+    for i in range(1, int(np.max(ci) + 1)):
+        Koi_neg = np.sum(W_neg[np.ix_(ci == i, ci == i)], axis=1)
+        Z_neg[np.where(ci == i)] = (Koi_neg - np.mean(Koi_neg)) / np.std(Koi_neg)
+
+    Z_neg[np.where(np.isnan(Z_neg))] = 0
+
+
+    return Z_all, Z_pos, Z_neg
+
+
 
 def pagerank_centrality(A, d, falff=None):
     '''
